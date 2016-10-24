@@ -5,11 +5,14 @@
 function PrintHelp ()
 {
         echo
-        echo Usage of the morning program
+        echo "Usage : morning [OPTION]..."
         echo ----------------------------
         echo
-        echo "help : put paramater help to see this helper"
-        echo "-n   : used to write a message to print to tomorrow"
+        echo "  -n                 Used to write a message to print to tomorrow."
+	echo "                       Can be used with a positive integer to"
+	echo "                       report the message by the number of days"
+	echo
+        echo "      --help         Display this help and exit"
         echo
 }
 
@@ -20,41 +23,41 @@ function MorningRoutine ()
         echo ----------------------------
 
         echo
-        echo logging for servers
-        echo -------------------
+        echo Executing commands
+        echo ------------------
 
-        #kinit earsene2
+        # Execute user defined commands
 
         echo 
-        echo Rappels
+        echo Reminders
         echo -------------------
-        echo Noublie pas douvrir la messagerie IBM
+        echo 
 
-        # Affichage du message
+        # Print user defined daily reminders
 
         day=$(date +%d)
         month=$(date +%m)
         year=$(date +%Y)
 
 
-        nomfichierhier="Morning_${year}_${month}_${day}.txt"
+        filename="Morning_${year}_${month}_${day}.txt"
 
         echo
-        echo Message de hier
+        echo Message for you
         echo ---------------
 
-        if [ -f "$nomfichierhier" ]; then
-                cat "$nomfichierhier"
+        if [ -f "$filename" ]; then
+                cat "$filename"
                 echo
         else
-                echo Aucun message enregistrer
+                echo No messages to display
         fi
 }
 
 function CreateFile ()
 {
-        # Creation du nom de fichier
-        arraytexte=()
+        # Creating the name of the file
+        textarray=()
 
         day=$(date +%d)
         month=$(date +%m)
@@ -67,30 +70,28 @@ function CreateFile ()
                 day=$(($day+1))
         fi
 
-        nomfichier="Morning_${year}_${month}_${day}.txt"
+        filename="Morning_${year}_${month}_${day}.txt"
 
-        # Lecture du texte
-        read -p $'Enter text (enter eol to end): \n' texte
-        while [ "$texte" != "eol" ]
+        # Read text
+        read -p $'Enter text (enter eol to end): \n' text
+        while [ "$text" != "eol" ]
         do
-                arraytexte+=("$texte")
-                read texte
+                textarray+=("$text")
+                read text
         done
 
         # If array is empty do not create file
 
-        # Ecriture du texte au fichier
-        for i in "${arraytexte[@]}"
+        # Write text to array
+        for i in "${textarray[@]}"
         do
-                echo $i >> "$nomfichier"
+                echo $i >> "$filename"
         done
 }
 
 function CleanMessages ()
 {
         # Cleaning to do
-
-        # S'il y a deux messages dans le répertoire, supprimer le plus ancien
 
         listMornings=($(ls -1 | egrep 'Morning_[0-9]{4}_[0-9]{2}_[0-9]{2}.txt'))
 
@@ -103,10 +104,10 @@ function CleanMessages ()
         fi
 }
 
-# Gestion des arguments
+# Arguments parsing
 
 if [ $# -eq 0 ]; then
-        # Commandes a executer a chaque matin
+        # Run daily commands
         MorningRoutine
         # Clean message folder of older messages
         CleanMessages
@@ -118,11 +119,11 @@ else
                 exit 128
         fi
 
-        if [ "$1" = "help" ]; then
+        if [ "$1" = "--help" ]; then
                 PrintHelp
         fi
 
-        # Ecriture du message du soir (Si parametre -n)
+        # Writing message if parameter -n
 
         if [ "$1" = "-n" ]; then
 
