@@ -1,0 +1,145 @@
+#!/bin/bash
+
+# Fonctions
+
+function PrintHelp ()
+{
+        echo
+        echo Usage of the morning program
+        echo ----------------------------
+        echo
+        echo "help : put paramater help to see this helper"
+        echo "-n   : used to write a message to print to tomorrow"
+        echo
+}
+
+function MorningRoutine () 
+{
+        echo ----------------------------
+        date
+        echo ----------------------------
+
+        echo
+        echo logging for servers
+        echo -------------------
+
+        #kinit earsene2
+
+        echo 
+        echo Rappels
+        echo -------------------
+        echo Noublie pas douvrir la messagerie IBM
+
+        # Affichage du message
+
+        day=$(date +%d)
+        month=$(date +%m)
+        year=$(date +%Y)
+
+
+        nomfichierhier="Morning_${year}_${month}_${day}.txt"
+
+        echo
+        echo Message de hier
+        echo ---------------
+
+        if [ -f "$nomfichierhier" ]; then
+                cat "$nomfichierhier"
+                echo
+        else
+                echo Aucun message enregistrer
+        fi
+}
+
+function CreateFile ()
+{
+        # Creation du nom de fichier
+        arraytexte=()
+
+        day=$(date +%d)
+        month=$(date +%m)
+        year=$(date +%Y)
+
+        # Add number of days requested or the default of one
+        if [ $# -eq 1 ]; then
+                day=$(($day+$1))
+        else
+                day=$(($day+1))
+        fi
+
+        nomfichier="Morning_${year}_${month}_${day}.txt"
+
+        # Lecture du texte
+        read -p $'Enter text (enter eol to end): \n' texte
+        while [ "$texte" != "eol" ]
+        do
+                arraytexte+=("$texte")
+                read texte
+        done
+
+        # If array is empty do not create file
+
+        # Ecriture du texte au fichier
+        for i in "${arraytexte[@]}"
+        do
+                echo $i >> "$nomfichier"
+        done
+}
+
+function CleanMessages ()
+{
+        # Cleaning to do
+
+        # S'il y a deux messages dans le répertoire, supprimer le plus ancien
+
+        listMornings=($(ls -1 | egrep 'Morning_[0-9]{4}_[0-9]{2}_[0-9]{2}.txt'))
+
+        echo
+
+        if [ ${#listMornings[@]} -gt 1 ]; then
+                echo More than one file
+        else
+                echo one file or less
+        fi
+}
+
+# Gestion des arguments
+
+if [ $# -eq 0 ]; then
+        # Commandes a executer a chaque matin
+        MorningRoutine
+        # Clean message folder of older messages
+        CleanMessages
+else
+        if [ $# -gt 2 ]; then
+                echo
+                echo "Too many arguments : $#"
+                PrintHelp
+                exit 128
+        fi
+
+        if [ "$1" = "help" ]; then
+                PrintHelp
+        fi
+
+        # Ecriture du message du soir (Si parametre -n)
+
+        if [ "$1" = "-n" ]; then
+
+                if [ $# -eq 1 ]; then
+                        CreateFile
+                fi
+
+                # If there is a number of days skip ahead by that much
+                if [ $# -eq 2 ]; then
+
+                        # Test to see if number is a positive integer
+                        if [[ $2 =~ ^[+]?[0-9]+$ ]]; then
+                                CreateFile $2
+                        else
+                                echo Invalid parameter for -n option
+                                PrintHelp
+                        fi
+                fi
+        fi
+fi
