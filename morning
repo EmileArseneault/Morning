@@ -27,6 +27,7 @@ function MorningRoutine ()
         echo ------------------
 
         # Execute user defined commands
+	# will have to implement way to execute said script and to edit it	
 
         echo 
         echo Reminders
@@ -34,17 +35,15 @@ function MorningRoutine ()
         echo 
 
         # Print user defined daily reminders
-
-        day=$(date +%d)
-        month=$(date +%m)
-        year=$(date +%Y)
-
+	# will have to implement a way to edit reminders
 
         filename="Morning_${year}_${month}_${day}.txt"
-
+	
         echo
         echo Message for you
         echo ---------------
+
+	# Print message for the day
 
         if [ -f "$filename" ]; then
                 cat "$filename"
@@ -58,10 +57,6 @@ function CreateFile ()
 {
         # Creating the name of the file
         textarray=()
-
-        day=$(date +%d)
-        month=$(date +%m)
-        year=$(date +%Y)
 
         # Add number of days requested or the default of one
         if [ $# -eq 1 ]; then
@@ -81,12 +76,15 @@ function CreateFile ()
         done
 
         # If array is empty do not create file
-
-        # Write text to array
-        for i in "${textarray[@]}"
-        do
-                echo $i >> "$filename"
-        done
+	if [ "${#textarray[@]}" -ne 0 ]; then
+	
+        	# Write text to array
+        	for i in "${textarray[@]}"
+        	do
+        	        echo $i >> "$filename"
+        	done
+	
+	fi
 }
 
 function CleanMessages ()
@@ -96,15 +94,48 @@ function CleanMessages ()
         listMornings=($(ls -1 | egrep 'Morning_[0-9]{4}_[0-9]{2}_[0-9]{2}.txt'))
 
         echo
+	
+	for file in "${listMornings[@]}"
+	do
 
-        if [ ${#listMornings[@]} -gt 1 ]; then
-                echo More than one file
-        else
-                echo one file or less
-        fi
+		fileyear=$(echo "$file" | cut -d '_' -f2)
+		filemonth=$(echo "$file" | cut -d '_' -f3)
+		fileday=$(echo "$file" | cut -d '_' -f4 | cut -d '.' -f1)
+		#echo ${fileyear}/${filemonth}/${fileday}
+		
+		# Check if message file is older than the current date
+		if [ "$fileyear" -lt "$year" ]; then
+			# Delete file
+			rm "$file"
+
+		elif [ "$fileyear" -eq "$year" ]; then
+ 
+			if [ "$filemonth" -lt "$month" ]; then
+				# Delete file
+				rm "$file"
+
+			elif [ "$filemonth" -eq "$month" ]; then
+
+				if [ "$fileday" -lt "$day" ]; then
+					# Delete file
+					rm "$file"
+				fi
+			fi
+		fi
+
+	done
+}
+
+function SetDate ()
+{	
+        day=$(date +%d)
+        month=$(date +%m)
+        year=$(date +%Y)
 }
 
 # Arguments parsing
+
+SetDate
 
 if [ $# -eq 0 ]; then
         # Run daily commands
