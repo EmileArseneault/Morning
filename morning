@@ -24,23 +24,39 @@ function MorningRoutine ()
 	if [ "${isportable}" = true ]; then
 		echo Portable mode
 	fi
-
-	echo
-	echo Executing commands
-	echo ------------------
 	
-	bash $commandsfile
+	if [ -s "$commandsfile" ]; then
 
-	# Execute user defined commands
-	# will have to implement way to execute said script and to edit it	
+		echo
+		echo Executing commands
+		echo ------------------
 
-	echo 
-	echo Reminders
-	echo ------------------- 
+		if [ -x "$commandsfile" ]; then
+			
+			bash $commandsfile
+
+			# Execute user defined commands
+			# will have to implement way to execute said script and to edit it	
+		else
+			echo "ERROR : $commandsfile is not executable."
+		fi
+	fi
 	
-	echo $(cat $remindersfile)
-	# Print user defined daily reminders
-	# will have to implement a way to edit reminders
+	if [ -s "$remindersfile" ]; then
+
+		echo 
+		echo Reminders
+		echo -------------------
+
+		if [ -r "$remindersfile" ]; then
+			
+			echo $(cat $remindersfile)
+			# Print user defined daily reminders
+			# will have to implement a way to edit reminders
+		else
+			echo "ERROR : $remindersfile cannot be read."
+		fi
+	fi
 
 	filename="${pathtofiles}/Morning_${year}_${month}_${day}.txt"
 
@@ -50,9 +66,13 @@ function MorningRoutine ()
 
 	# Print message for the day
 
-	if [ -f "$filename" ]; then
-		cat "$filename"
-		echo
+	if [ -s "$filename" ]; then
+		if [ -r "$filename" ]; then
+			cat "$filename"
+			echo
+		else
+			echo "ERROR : $filename cannot be read."
+		fi
 	else
 		echo No messages to display
 	fi
