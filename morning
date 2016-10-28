@@ -109,19 +109,19 @@ function CleanMessages ()
 		# Check if message file is older than the current date
 		if [ "$fileyear" -lt "$year" ]; then
 			# Delete file
-			rm "$file"
+			rm "${pathtofiles}/${file}"
 
 		elif [ "$fileyear" -eq "$year" ]; then
  
 			if [ "$filemonth" -lt "$month" ]; then
 				# Delete file
-				rm "$file"
+				rm "${pathtofiles}/${file}"
 
 			elif [ "$filemonth" -eq "$month" ]; then
 
 				if [ "$fileday" -lt "$day" ]; then
 					# Delete file
-					rm "$file"
+					rm "${pathtofiles}/${file}"
 				fi
 			fi
 		fi
