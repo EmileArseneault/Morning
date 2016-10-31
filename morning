@@ -58,7 +58,7 @@ function MorningRoutine ()
 		fi
 	fi
 
-	filename="${pathtofiles}/Morning_${year}_${month}_${day}.txt"
+	filename="${pathtofiles}Morning_${year}_${month}_${day}.txt"
 
 	echo
 	echo Message for you
@@ -90,7 +90,7 @@ function CreateFile ()
 		day=$(($day+1))
 	fi
 
-	filename="${pathtofiles}/Morning_${year}_${month}_${day}.txt"
+	filename="${pathtofiles}Morning_${year}_${month}_${day}.txt"
 
 	# Read text
 	read -p $'Enter text (enter eol to end): \n' text
@@ -129,19 +129,19 @@ function CleanMessages ()
 		# Check if message file is older than the current date
 		if [ "$fileyear" -lt "$year" ]; then
 			# Delete file
-			rm "${pathtofiles}/${file}"
+			rm "${pathtofiles}${file}"
 
 		elif [ "$fileyear" -eq "$year" ]; then
  
 			if [ "$filemonth" -lt "$month" ]; then
 				# Delete file
-				rm "${pathtofiles}/${file}"
+				rm "${pathtofiles}${file}"
 
 			elif [ "$filemonth" -eq "$month" ]; then
 
 				if [ "$fileday" -lt "$day" ]; then
 					# Delete file
-					rm "${pathtofiles}/${file}"
+					rm "${pathtofiles}${file}"
 				fi
 			fi
 		fi
@@ -155,7 +155,7 @@ function PathGathering ()
 	# if it is not, it assumes it is in portable mode and will take all of its files from the executing folder
 
 	pathtoconfig="${HOME}/morning/morning.conf"
-	pathtofiles="${HOME}/morning"
+	pathtofiles="${HOME}/morning/"
 
 	# Does not work on OSX
 	pathtoscript1=$(dirname `which $0`)
@@ -180,8 +180,8 @@ function PathGathering ()
 			commandsfile="commands"
 		else
 			isportable=false
-			remindersfile="${pathtofiles}/reminders.txt"
-			commandsfile="${pathtofiles}/commands"
+			remindersfile="${pathtofiles}reminders.txt"
+			commandsfile="${pathtofiles}commands"
 		fi
 	fi
 }
