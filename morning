@@ -82,15 +82,22 @@ function CreateFile ()
 {
 	# Creating the name of the file
 	textarray=()
+	local nextday
+	local nextmonth
+	local nextyear
 
 	# Add number of days requested or the default of one
 	if [ $# -eq 1 ]; then
-		day=$(($day+$1))
+    	nextday=$(date --date="$1 day" +%d)
+    	nextmonth=$(date --date="$1 day" +%m)
+    	nextyear=$(date --date="$1 day" +%Y)
 	else
-		day=$(($day+1))
+    	nextday=$(date --date="1 day" +%d)
+    	nextmonth=$(date --date="1 day" +%m)
+    	nextyear=$(date --date="1 day" +%Y)
 	fi
 
-	filename="${pathtofiles}Morning_${year}_${month}_${day}.txt"
+	filename="${pathtofiles}Morning_${nextyear}_${nextmonth}_${nextday}.txt"
 
 	# Read text
 	read -p $'Enter text (enter eol to end): \n' text
