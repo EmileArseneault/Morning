@@ -193,6 +193,45 @@ function PathGathering ()
 	fi
 }
 
+function CreateConfig ()
+{
+	touch "$pathtoconfig"
+
+	if [ -e "$pathtoconfig" ]; then
+		if [ -w "$pathtoconfig" ]; then
+			echo "echo It still worked" >> "$pathtoconfig"
+			return 0
+		else
+			echo "ERROR : could not write default config in $pathtoconfig"
+			return 1
+		fi
+	else
+		echo "ERROR : could not create $pathtoconfig"
+		return 1
+	fi
+}
+
+function ConfigLoading ()
+{
+	# First test if config file is present
+	if [ -e "$pathtoconfig" ]; then
+		if [ -r "$pathtoconfig" ]; then
+			source "$pathtoconfig"
+		else
+			echo "ERROR : $pathtoconfig cannot be read."
+		fi
+	else
+		# Try to create the config
+		CreateConfig
+
+		if [ "$?" -eq 0 ]; then
+			# This is a security risk because it can execute code
+			source "$pathtoconfig"
+		fi
+		
+	fi
+}
+
 function SetDate ()
 {	
 	day=$(date +%d)
@@ -204,6 +243,7 @@ function SetDate ()
 
 PathGathering
 SetDate
+ConfigLoading
 
 # Arguments parsing
 
@@ -225,7 +265,6 @@ else
 	fi
 
 	# Writing message if parameter -n
-
 	if [ "$1" = "-n" ]; then
 
 		if [ $# -eq 1 ]; then
