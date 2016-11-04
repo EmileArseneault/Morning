@@ -30,15 +30,20 @@ function MorningRoutine ()
 		echo
 		echo Executing commands
 		echo ------------------
+		if [ -f "$commandsfile" ]; then
+			if [ -x "$commandsfile" ]; then
 
-		if [ -x "$commandsfile" ]; then
-			
-			bash $commandsfile
-
-			# Execute user defined commands
-			# will have to implement way to execute said script and to edit it	
+				bash $commandsfile
+	
+				# Execute user defined commands
+				# will have to implement way to execute said script and to edit it	
+			else
+				echo "ERROR : $commandsfile is not executable."
+			fi
 		else
-			echo "ERROR : $commandsfile is not executable."
+			echo "ERROR : $commandsfile is not a regular file."
+			echo "Is the path to commandsfile a folder ?"
+			echo "Please use complete path with the file name at the end."
 		fi
 	fi
 	
@@ -47,14 +52,19 @@ function MorningRoutine ()
 		echo 
 		echo Reminders
 		echo -------------------
-
-		if [ -r "$remindersfile" ]; then
-			
-			echo $(cat $remindersfile)
-			# Print user defined daily reminders
-			# will have to implement a way to edit reminders
+		if [ -f "$remindersfile" ];then
+			if [ -r "$remindersfile" ]; then
+				
+				echo $(cat $remindersfile)
+				# Print user defined daily reminders
+				# will have to implement a way to edit reminders
+			else
+				echo "ERROR : $remindersfile cannot be read."
+			fi
 		else
-			echo "ERROR : $remindersfile cannot be read."
+			echo "ERROR : $remindersfile is not a regular file."
+			echo "Is the path to remindersfile a folder ?"
+			echo "Please use complete path with the file name at the end."
 		fi
 	fi
 
@@ -101,7 +111,7 @@ function CreateFile ()
 
 	# Read text
 	read -p $'Enter text (enter eol to end): \n' text
-	while [ "$text" != "eol" ]
+	while [ "$text" != "eol" ] || [ "$text" != "EOL" ]
 	do
 		textarray+=("$text")
 		read text
@@ -158,38 +168,57 @@ function CleanMessages ()
 
 function PathGathering ()
 {
-	# Script should always be executed from /usr/bin from the PATH
-	# if it is not, it assumes it is in portable mode and will take all of its files from the executing folder
-
-	pathtoconfig="${HOME}/morning/morning.conf"
-	pathtofiles="${HOME}/morning/"
-
-	# Does not work on OSX
-	pathtoscript1=$(dirname `which $0`)
-	# Should work on OSX found at http://stackoverflow.com/questions/4774054/reliable-way-for-a-bash-script-to-get-the-full-path-to-itself
-	pathtoscript2="$( cd "$(dirname "$0")" ; pwd -P )"
+	pathtofiles="filepathnotset"
+	remindersfile="filepathnotset"
+	commandsfile="filepathnotset"
 	
-	if [ "$pathtoscript1" != "$pathtoscript2" ]; then
-		echo Path to script is unclear please contact owner at PUT GITHUB LINK
-		echo Please add this information to your bugtrack with your OS
-		echo ----------------------------------------------------------------
-		echo "pathtoscript1 = $pathtoscript1"
-		echo "pathtoscript2 = $pathtoscript2"
-		echo ----------------------------------------------------------------
-	else	
-		pathtoscript="$pathtoscript2"
+	# Check config for paths
+	if [ "$isportable" = true ]; then
+		pathtoconfig="morning.conf"
+	else
+		pathtoconfig="${HOME}/morning/morning.conf"
+	fi
+	
+	ConfigLoading
 
-		if [ "$pathtoscript" != '/usr/bin' ]; then
-			isportable=true
+	# Paths should be loaded but put defaults if not
+	if [ "$pathtofiles" == "filepathnotset" ]; then
+		if [ "$isportable" = true ]; then
 			pathtofiles=""
-			pathtoconfig="morning.conf"
+		else
+			pathtofiles="${HOME}/morning/"
+		fi
+	fi
+
+	if [ "$remindersfile" == "filepathnotset" ]; then
+		if [ "$isportable" = true ]; then
 			remindersfile="reminders.txt"
+		else
+			remindersfile="${pathtofiles}reminders.txt"
+		fi
+	fi
+
+	if [ "$commandsfile" == "filepathnotset" ]; then
+		if [ "$isportable" = true ]; then
 			commandsfile="commands"
 		else
-			isportable=false
-			remindersfile="${pathtofiles}reminders.txt"
 			commandsfile="${pathtofiles}commands"
 		fi
+	fi
+
+	# Need to confirm that paths are absolute in Installed and relative in portable
+	if [ "$isportable" = true ]; then
+		if [[ $pathtofiles =~ ^/.* ]] || [[ $remindersfile =~ ^/.* ]] || [[ $commandsfile =~ ^/.* ]]; then
+			echo
+			echo "CONFIG ERROR : pathtofiles, remindersfile and commandsfile should be relative paths to be portable"
+			echo
+		fi
+	else
+		if ! [[ $pathtofiles =~ ^/.* ]] || ! [[ $remindersfile =~ ^/.* ]] || ! [[ $commandsfile =~ ^/.* ]]; then
+			echo
+			echo "CONFIG ERROR : pathtofiles, remindersfile and commandsfile should be absolute paths when installed"
+			echo
+		fi	
 	fi
 }
 
@@ -199,7 +228,11 @@ function CreateConfig ()
 
 	if [ -e "$pathtoconfig" ]; then
 		if [ -w "$pathtoconfig" ]; then
-			echo "echo It still worked" >> "$pathtoconfig"
+			# This will push default values for all paths
+			echo '# This is the morning command configuration file' >> "$pathtoconfig"
+			echo 'remindersfile="filepathnotset"' >> "$pathtoconfig"
+			echo 'commandsfile="filepathnotset"' >> "$pathtoconfig"
+			echo 'pathtofiles="filepathnotset"' >> "$pathtoconfig"
 			return 0
 		else
 			echo "ERROR : could not write default config in $pathtoconfig"
@@ -228,7 +261,6 @@ function ConfigLoading ()
 			# This is a security risk because it can execute code
 			source "$pathtoconfig"
 		fi
-		
 	fi
 }
 
@@ -239,11 +271,42 @@ function SetDate ()
 	year=$(date +%Y)
 }
 
+InstalledOrPortable ()
+{
+	# Script should always be executed from /usr/bin from the PATH
+	# if it is not, it assumes it is in portable mode and will take all of its files from the executing folder
+	
+	# Does not work on OSX
+	local pathtoscript1=$(dirname `which $0`)
+	# Should work on OSX found at http://stackoverflow.com/questions/4774054/reliable-way-for-a-bash-script-to-get-the-full-path-to-itself
+	local pathtoscript2="$( cd "$(dirname "$0")" ; pwd -P )"
+	
+	if [ "$pathtoscript1" != "$pathtoscript2" ]; then
+		echo
+		echo Path to script is unclear please contact owner at PUT GITHUB LINK
+		echo Please add this information to your bugtrack with your OS
+		echo ----------------------------------------------------------------
+		echo Path mismatch :
+		echo "pathtoscript1 = $pathtoscript1"
+		echo "pathtoscript2 = $pathtoscript2"
+		echo ----------------------------------------------------------------
+		echo
+	else	
+		pathtoscript="$pathtoscript2"
+		
+		if [ "$pathtoscript" != '/usr/bin' ]; then
+			isportable=true
+		else
+			isportable=false
+		fi
+	fi
+}
+
 # Initialisation
 
+InstalledOrPortable
 PathGathering
 SetDate
-ConfigLoading
 
 # Arguments parsing
 
@@ -261,7 +324,7 @@ else
 	fi
 
 	if [ "$1" = "--help" ]; then
-			PrintHelp
+		PrintHelp
 	fi
 
 	# Writing message if parameter -n
