@@ -111,7 +111,7 @@ function CreateFile ()
 
 	# Read text
 	read -p $'Enter text (enter eol to end): \n' text
-	while [ "$text" != "eol" ] || [ "$text" != "EOL" ]
+	while [ "$text" != "eol" ] && [ "$text" != "EOL" ]
 	do
 		textarray+=("$text")
 		read text
