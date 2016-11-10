@@ -8,11 +8,13 @@ function PrintHelp ()
 	echo "Usage : morning [OPTION]..."
 	echo ----------------------------
 	echo
-	echo "	-n				   Used to write a message to print to tomorrow."
-	echo "						 Can be used with a positive integer to"
-	echo "						 report the message by the number of days"
+	echo "  -n                 Used to write a message to print to tomorrow."
+	echo "                       Can be used with a positive integer to"
+	echo "                       report the message by the number of days."
+	echo "  -w                 Used as a shortcut to 'morning -n 3' to be used"
+	echo "                       friday to print the message monday."
 	echo
-	echo "		--help		   Display this help and exit"
+	echo "     --help          Display this help and exit."
 	echo
 }
 
@@ -131,11 +133,17 @@ function CreateFile ()
 
 function CleanMessages ()
 {
-	# Will have to update to work with new paths
-	listMornings=($(ls -1 ${pathtofiles} | egrep 'Morning_[0-9]{4}_[0-9]{2}_[0-9]{2}.txt'))
-
+	local listMornings
 	echo
-	
+
+	if ! [ "$pathtofiles" == "" ]; then
+		if [ -d "$pathtofiles" ]; then
+			listMornings=($(ls -1 ${pathtofiles} | egrep 'Morning_[0-9]{4}_[0-9]{2}_[0-9]{2}.txt'))
+		else
+			echo "ERROR : Could not delete older messages because $pathtofiles does not exist."
+		fi
+	fi
+
 	for file in "${listMornings[@]}"
 	do
 
@@ -166,17 +174,46 @@ function CleanMessages ()
 	done
 }
 
+function CreateHomeFolder ()
+{
+	# Function used when no files are there to set up
+	local pathtonewfiles="${HOME}/.morning/"
+
+	mkdir "${HOME}/.morning"
+	
+	# Create exemple files
+	touch "${pathtonewfiles}reminders.txt"	
+	touch "${pathtonewfiles}commands"
+
+	echo 'Here you can put text reminders to be output daily!' >> "${pathtonewfiles}reminders.txt"
+	# After the feature is added, put a line for the edit command
+	echo '#!/bin/bash' >> "${pathtonewfiles}commands"
+	echo >> "${pathtonewfiles}commands"
+	echo 'echo Here you can put commands to be executed each morning' >> "${pathtonewfiles}commands"
+	# After the feature is added, put a line for the edit command
+
+	chmod +x "${pathtonewfiles}commands"
+}
+
 function PathGathering ()
 {
 	pathtofiles="filepathnotset"
 	remindersfile="filepathnotset"
 	commandsfile="filepathnotset"
-	
+	homefolder="${HOME}/.morning"
+
+	# Check if home folder exists (meaning first time use)
+	if [ "$isportable" = false ]; then
+		if ! [ -d "$homefolder" ]; then
+			CreateHomeFolder
+		fi
+	fi
+
 	# Check config for paths
 	if [ "$isportable" = true ]; then
 		pathtoconfig="morning.conf"
 	else
-		pathtoconfig="${HOME}/morning/morning.conf"
+		pathtoconfig="${HOME}/.morning/morning.conf"
 	fi
 	
 	ConfigLoading
@@ -186,7 +223,7 @@ function PathGathering ()
 		if [ "$isportable" = true ]; then
 			pathtofiles=""
 		else
-			pathtofiles="${HOME}/morning/"
+			pathtofiles="${HOME}/.morning/"	
 		fi
 	fi
 
@@ -230,9 +267,10 @@ function CreateConfig ()
 		if [ -w "$pathtoconfig" ]; then
 			# This will push default values for all paths
 			echo '# This is the morning command configuration file' >> "$pathtoconfig"
+			echo >> "$pathtoconfig"
+			echo 'pathtofiles="filepathnotset"' >> "$pathtoconfig"
 			echo 'remindersfile="filepathnotset"' >> "$pathtoconfig"
 			echo 'commandsfile="filepathnotset"' >> "$pathtoconfig"
-			echo 'pathtofiles="filepathnotset"' >> "$pathtoconfig"
 			return 0
 		else
 			echo "ERROR : could not write default config in $pathtoconfig"
@@ -344,6 +382,17 @@ else
 				echo Invalid parameter for -n option
 				PrintHelp
 			fi
+		fi
+	fi
+
+	# Writting message for the weekend
+	if [ "$1" = "-w" ]; then
+
+		if [ $# -lt 2 ]; then
+			CreateFile 3
+		else
+			echo Invalid parameter for -w option
+			PrintHelp
 		fi
 	fi
 fi
