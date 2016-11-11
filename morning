@@ -88,6 +88,8 @@ function MorningRoutine ()
 	else
 		echo No messages to display
 	fi
+
+	echo
 }
 
 function CreateFile ()
@@ -134,7 +136,6 @@ function CreateFile ()
 function CleanMessages ()
 {
 	local listMornings
-	echo
 
 	if ! [ "$pathtofiles" == "" ]; then
 		if [ -d "$pathtofiles" ]; then
@@ -174,50 +175,8 @@ function CleanMessages ()
 	done
 }
 
-function CreateHomeFolder ()
+function PathChecking ()
 {
-	# Function used when no files are there to set up
-	local pathtonewfiles="${HOME}/.morning/"
-
-	mkdir "${HOME}/.morning"
-	
-	# Create exemple files
-	touch "${pathtonewfiles}reminders.txt"	
-	touch "${pathtonewfiles}commands"
-
-	echo 'Here you can put text reminders to be output daily!' >> "${pathtonewfiles}reminders.txt"
-	# After the feature is added, put a line for the edit command
-	echo '#!/bin/bash' >> "${pathtonewfiles}commands"
-	echo >> "${pathtonewfiles}commands"
-	echo 'echo Here you can put commands to be executed each morning' >> "${pathtonewfiles}commands"
-	# After the feature is added, put a line for the edit command
-
-	chmod +x "${pathtonewfiles}commands"
-}
-
-function PathGathering ()
-{
-	pathtofiles="filepathnotset"
-	remindersfile="filepathnotset"
-	commandsfile="filepathnotset"
-	homefolder="${HOME}/.morning"
-
-	# Check if home folder exists (meaning first time use)
-	if [ "$isportable" = false ]; then
-		if ! [ -d "$homefolder" ]; then
-			CreateHomeFolder
-		fi
-	fi
-
-	# Check config for paths
-	if [ "$isportable" = true ]; then
-		pathtoconfig="morning.conf"
-	else
-		pathtoconfig="${HOME}/.morning/morning.conf"
-	fi
-	
-	ConfigLoading
-
 	# Paths should be loaded but put defaults if not
 	if [ "$pathtofiles" == "filepathnotset" ]; then
 		if [ "$isportable" = true ]; then
@@ -257,6 +216,8 @@ function PathGathering ()
 			echo
 		fi	
 	fi
+
+	# Will also need to alter the paths if the name of the file is not given and if there is or not a / at the end
 }
 
 function CreateConfig ()
@@ -284,6 +245,15 @@ function CreateConfig ()
 
 function ConfigLoading ()
 {
+	# Should we put the config in /etc ? in advanced bash script it says it is the repertory for configs
+
+	# Set path to config
+	if [ "$isportable" = true ]; then
+		pathtoconfig="morning.conf"
+	else
+		pathtoconfig="${HOME}/.morning/morning.conf"
+	fi
+
 	# First test if config file is present
 	if [ -e "$pathtoconfig" ]; then
 		if [ -r "$pathtoconfig" ]; then
@@ -302,11 +272,41 @@ function ConfigLoading ()
 	fi
 }
 
-function SetDate ()
-{	
-	day=$(date +%d)
-	month=$(date +%m)
-	year=$(date +%Y)
+function CreateHomeFolder ()
+{
+	# Function used when no files are there to set up
+	local pathtonewfiles="${HOME}/.morning/"
+
+	mkdir "${HOME}/.morning"
+	
+	# Create exemple files
+	touch "${pathtonewfiles}reminders.txt"	
+	touch "${pathtonewfiles}commands"
+
+	echo 'Here you can put text reminders to be output daily!' >> "${pathtonewfiles}reminders.txt"
+	# After the feature is added, put a line for the edit command
+	echo '#!/bin/bash' >> "${pathtonewfiles}commands"
+	echo >> "${pathtonewfiles}commands"
+	echo 'echo Here you can put commands to be executed each morning' >> "${pathtonewfiles}commands"
+	# After the feature is added, put a line for the edit command
+
+	chmod +x "${pathtonewfiles}commands"
+}
+
+function LookForHome ()
+{
+	# Sets base paths
+	local homefolder="${HOME}/.morning"
+	pathtofiles="filepathnotset"
+	remindersfile="filepathnotset"
+	commandsfile="filepathnotset"
+
+	# Check if home folder exists (meaning first time use)
+	if [ "$isportable" = false ]; then
+		if ! [ -d "$homefolder" ]; then
+			CreateHomeFolder
+		fi
+	fi
 }
 
 InstalledOrPortable ()
@@ -340,11 +340,20 @@ InstalledOrPortable ()
 	fi
 }
 
+function SetDate ()
+{	
+	day=$(date +%d)
+	month=$(date +%m)
+	year=$(date +%Y)
+}
+
 # Initialisation
 
-InstalledOrPortable
-PathGathering
 SetDate
+InstalledOrPortable
+LookForHome
+ConfigLoading
+PathChecking
 
 # Arguments parsing
 
