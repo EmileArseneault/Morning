@@ -12,9 +12,12 @@ function PrintHelp ()
 	echo "                       Can be used with a positive integer to"
 	echo "                       report the message by the number of days."
 	echo "  -w                 Used as a shortcut to 'morning -n 3' to be used"
-	echo "                       friday to print the message monday."
+	echo "                       report the message by the number of days."
+	echo "  -p                 Display past messages by the number of days given."
+	echo "                       Messages have to be in history time interval."
+	echo "                       (config variable historytime > days given)"
 	echo
-	echo "     --help          Display this help and exit."
+	echo "  -h,--help          Display this help and exit."
 	echo
 }
 
@@ -70,26 +73,63 @@ function MorningRoutine ()
 		fi
 	fi
 
-	filename="${pathtofiles}Morning_${year}_${month}_${day}.txt"
+	DisplayMessage $year $month $day
+}
 
-	echo
-	echo Message for you
-	echo ---------------
+function DisplayMessage ()
+{
+	local messageyear
+	local messagemonth
+	local messageday
 
-	# Print message for the day
+	if [ $# -eq 3 ]; then
 
-	if [ -s "$filename" ]; then
-		if [ -r "$filename" ]; then
-			cat "$filename"
-			echo
+		messageyear=$1
+		messagemonth=$2
+		messageday=$3
+
+		filename="${pathtofiles}Morning_${messageyear}_${messagemonth}_${messageday}.txt"
+
+		echo
+		echo Message for you
+		echo ---------------
+		
+		# Print message for the day
+
+		if [ -s "$filename" ]; then
+			if [ -r "$filename" ]; then
+				cat "$filename"
+			else
+				echo "ERROR : $filename cannot be read."
+			fi
 		else
-			echo "ERROR : $filename cannot be read."
+			echo No messages to display
 		fi
-	else
-		echo No messages to display
-	fi
 
-	echo
+	else
+		echo "ERROR : DisplayMessage was passed the wrong number of arguments"
+	fi
+}
+
+function DisplayPastMessage ()
+{
+	local messageyear
+	local messagemonth
+	local messageday
+		
+	if [ $# -eq 1 ]; then
+		
+    	messageday=$(date --date="$1 day ago" +%d)
+    	messagemonth=$(date --date="$1 day ago" +%m)
+    	messageyear=$(date --date="$1 day ago" +%Y)
+
+		DisplayMessage $messageyear $messagemonth $messageday
+		
+		echo "(${messageyear}/${messagemonth}/${messageday})"
+
+	else
+		echo "ERROR : DisplayPastMessage was passed the wrong number of arguments"
+	fi
 }
 
 function CreateFile ()
@@ -136,43 +176,66 @@ function CreateFile ()
 function CleanMessages ()
 {
 	local listMornings
+	local deleteday
+	local deletemonth
+	local deleteyear
+	local skipdelete=false
+	
+	if [ -d "$pathtofiles" ]; then
+		listMornings=($(ls -1 ${pathtofiles} | grep 'Morning_[0-9][0-9][0-9][0-9]_[0-9][0-9]_[0-9][0-9].txt'))
+	else
+		echo "ERROR : Could not delete older messages because $pathtofiles does not exist."
+	fi
 
-	if ! [ "$pathtofiles" == "" ]; then
-		if [ -d "$pathtofiles" ]; then
-			listMornings=($(ls -1 ${pathtofiles} | egrep 'Morning_[0-9]{4}_[0-9]{2}_[0-9]{2}.txt'))
+	if [ -z ${historytime+x} ]; then
+		# Not set
+    	deleteday=$day
+    	deletemonth=$month
+    	deleteyear=$year
+	else
+		# Set
+		if [ "$historytime" -eq "$historytime" ] 2>/dev/null
+		then
+    		deleteday=$(date --date="$historytime day ago" +%d)
+    		deletemonth=$(date --date="$historytime day ago" +%m)
+    		deleteyear=$(date --date="$historytime day ago" +%Y)
 		else
-			echo "ERROR : Could not delete older messages because $pathtofiles does not exist."
+			skipdelete=true
+			echo "CONFIG ERROR : historytime is not a valid integer."
+			echo "No files will be deleted until proper value is set."
 		fi
 	fi
 
-	for file in "${listMornings[@]}"
-	do
 
-		fileyear=$(echo "$file" | cut -d '_' -f2)
-		filemonth=$(echo "$file" | cut -d '_' -f3)
-		fileday=$(echo "$file" | cut -d '_' -f4 | cut -d '.' -f1)
+	if [ "$skipdelete" = false ]; then
+		for file in "${listMornings[@]}"
+		do
+			fileyear=$(echo "$file" | cut -d '_' -f2)
+			filemonth=$(echo "$file" | cut -d '_' -f3)
+			fileday=$(echo "$file" | cut -d '_' -f4 | cut -d '.' -f1)
 		
-		# Check if message file is older than the current date
-		if [ "$fileyear" -lt "$year" ]; then
-			# Delete file
-			rm "${pathtofiles}${file}"
-
-		elif [ "$fileyear" -eq "$year" ]; then
- 
-			if [ "$filemonth" -lt "$month" ]; then
+			# Check if message file is older than the current date
+			if [ "$fileyear" -lt "$deleteyear" ]; then
 				# Delete file
 				rm "${pathtofiles}${file}"
 
-			elif [ "$filemonth" -eq "$month" ]; then
-
-				if [ "$fileday" -lt "$day" ]; then
+			elif [ "$fileyear" -eq "$deleteyear" ]; then
+ 
+				if [ "$filemonth" -lt "$deletemonth" ]; then
 					# Delete file
 					rm "${pathtofiles}${file}"
+
+				elif [ "$filemonth" -eq "$deletemonth" ]; then
+	
+					if [ "$fileday" -lt "$deleteday" ]; then
+						# Delete file
+						rm "${pathtofiles}${file}"
+					fi
 				fi
 			fi
-		fi
 
-	done
+		done
+	fi
 }
 
 function PathChecking ()
@@ -180,7 +243,7 @@ function PathChecking ()
 	# Paths should be loaded but put defaults if not
 	if [ "$pathtofiles" == "filepathnotset" ]; then
 		if [ "$isportable" = true ]; then
-			pathtofiles=""
+			pathtofiles="./"
 		else
 			pathtofiles="${HOME}/.morning/"	
 		fi
@@ -370,10 +433,6 @@ else
 		exit 128
 	fi
 
-	if [ "$1" = "--help" ]; then
-		PrintHelp
-	fi
-
 	# Writing message if parameter -n
 	if [ "$1" = "-n" ]; then
 
@@ -388,7 +447,7 @@ else
 			if [[ $2 =~ ^[+]?[0-9]+$ ]]; then
 				CreateFile $2
 			else
-				echo Invalid parameter for -n option
+				echo "Invalid parameter for -n option"
 				PrintHelp
 			fi
 		fi
@@ -400,8 +459,30 @@ else
 		if [ $# -lt 2 ]; then
 			CreateFile 3
 		else
-			echo Invalid parameter for -w option
+			echo "Invalid parameter for -w option"
 			PrintHelp
 		fi
 	fi
+
+	# Looking for past messages in history
+	if [ "$1" = "-p" ]; then
+		
+		# Test to see if number is a positive integer
+        if [[ $2 =~ ^[+]?[0-9]+$ ]]; then
+            DisplayPastMessage $2
+        else
+            echo "Invalid parameter for -p option"
+			echo "Use positive integers as number of days"
+            PrintHelp
+        fi
+	fi
+
+	# Print help section if asked
+	if [ "$1" = "--help" ] || [ "$1" = "-h" ]; then
+		PrintHelp
+	fi
+
+	# The help section should print if nothing was done TODO
 fi
+
+echo
