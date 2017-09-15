@@ -9,7 +9,7 @@ It also aims to be compatible on most Unix platforms like Linux flavors and OSX.
 
 ## Installation
 
-The morning script is simply installed by putting it in /bin/usr/ on the computer.
+The morning script is simply installed by putting it in /usr/bin/ on the computer.
 As this folder is already in the path of Unix machines, it is now ready to use.
 
 ## Use
