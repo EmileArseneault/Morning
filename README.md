@@ -23,7 +23,7 @@ Use the morning command with the "-n" option like so :
     morning -n
 
 This will then ask you to type a message line per line that you can end with EOL.
-This message will then be displayed tommorow morning.
+This message will then be displayed tomorrow morning.
 
 If you want the message to be displayed several days after you can tell it like so :
 

@@ -39,7 +39,6 @@ function MorningRoutine ()
 			if [ -x "$commandsfile" ]; then
 
 				bash $commandsfile
-	
 				# Execute user defined commands
 				# will have to implement way to execute said script and to edit it	
 			else
@@ -60,7 +59,7 @@ function MorningRoutine ()
 		if [ -f "$remindersfile" ];then
 			if [ -r "$remindersfile" ]; then
 				
-				echo $(cat $remindersfile)
+				cat $remindersfile
 				# Print user defined daily reminders
 				# will have to implement a way to edit reminders
 			else
@@ -189,16 +188,16 @@ function CleanMessages ()
 
 	if [ -z ${historytime+x} ]; then
 		# Not set
-    	deleteday=$day
-    	deletemonth=$month
-    	deleteyear=$year
+    		deleteday=$day
+    		deletemonth=$month
+    		deleteyear=$year
 	else
 		# Set
 		if [ "$historytime" -eq "$historytime" ] 2>/dev/null
 		then
-    		deleteday=$(date --date="$historytime day ago" +%d)
-    		deletemonth=$(date --date="$historytime day ago" +%m)
-    		deleteyear=$(date --date="$historytime day ago" +%Y)
+    			deleteday=$(date --date="$historytime day ago" +%d)
+    			deletemonth=$(date --date="$historytime day ago" +%m)
+    			deleteyear=$(date --date="$historytime day ago" +%Y)
 		else
 			skipdelete=true
 			echo "CONFIG ERROR : historytime is not a valid integer."
@@ -265,7 +264,7 @@ function PathChecking ()
 		fi
 	fi
 
-	# Need to confirm that paths are absolute in Installed and relative in portable
+	# Need to confirm that paths are absolute in installed mode and relative in portable mode
 	if [ "$isportable" = true ]; then
 		if [[ $pathtofiles =~ ^/.* ]] || [[ $remindersfile =~ ^/.* ]] || [[ $commandsfile =~ ^/.* ]]; then
 			echo
@@ -329,7 +328,6 @@ function ConfigLoading ()
 		CreateConfig
 
 		if [ "$?" -eq 0 ]; then
-			# This is a security risk because it can execute code
 			source "$pathtoconfig"
 		fi
 	fi
@@ -342,17 +340,17 @@ function CreateHomeFolder ()
 
 	mkdir "${HOME}/.morning"
 	
-	# Create exemple files
-	touch "${pathtonewfiles}reminders.txt"	
-	touch "${pathtonewfiles}commands"
-
+	# Create reminders exemple file
+	touch "${pathtonewfiles}reminders.txt"
 	echo 'Here you can put text reminders to be output daily!' >> "${pathtonewfiles}reminders.txt"
-	# After the feature is added, put a line for the edit command
+	# After the feature is added, put a line on how to edit the file
+
+	# Create commands exemple file
+	touch "${pathtonewfiles}commands"
 	echo '#!/bin/bash' >> "${pathtonewfiles}commands"
 	echo >> "${pathtonewfiles}commands"
 	echo 'echo Here you can put commands to be executed each morning' >> "${pathtonewfiles}commands"
-	# After the feature is added, put a line for the edit command
-
+	# After the feature is added, put a line on how to edit the file
 	chmod +x "${pathtonewfiles}commands"
 }
 
@@ -377,29 +375,13 @@ InstalledOrPortable ()
 	# Script should always be executed from /usr/bin from the PATH
 	# if it is not, it assumes it is in portable mode and will take all of its files from the executing folder
 	
-	# Does not work on OSX
-	local pathtoscript1=$(dirname `which $0`)
-	# Should work on OSX found at http://stackoverflow.com/questions/4774054/reliable-way-for-a-bash-script-to-get-the-full-path-to-itself
-	local pathtoscript2="$( cd "$(dirname "$0")" ; pwd -P )"
+	# Should work for all OS found at http://stackoverflow.com/questions/4774054/reliable-way-for-a-bash-script-to-get-the-full-path-to-itself
+	pathtoscript="$( cd "$(dirname "$0")" ; pwd -P )"
 	
-	if [ "$pathtoscript1" != "$pathtoscript2" ]; then
-		echo
-		echo Path to script is unclear please contact owner at PUT GITHUB LINK
-		echo Please add this information to your bugtrack with your OS
-		echo ----------------------------------------------------------------
-		echo Path mismatch :
-		echo "pathtoscript1 = $pathtoscript1"
-		echo "pathtoscript2 = $pathtoscript2"
-		echo ----------------------------------------------------------------
-		echo
-	else	
-		pathtoscript="$pathtoscript2"
-		
-		if [ "$pathtoscript" != '/usr/bin' ]; then
-			isportable=true
-		else
-			isportable=false
-		fi
+	if [ "$pathtoscript" != '/usr/bin' ]; then
+		isportable=true
+	else
+		isportable=false
 	fi
 }
 
