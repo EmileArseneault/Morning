@@ -15,7 +15,9 @@ function PrintHelp ()
 	echo "                       report the message by the number of days."
 	echo "  -p                 Display past messages by the number of days given."
 	echo "                       Messages have to be in history time interval."
-	echo "                       (config variable historytime > days given)"
+	echo "                       (config variable historytime >= days given)"
+	echo "  -r                 Open reminders file in user's default editor."
+	echo "  -c                 Open commands file in user's default editor."
 	echo
 	echo "  -h,--help          Display this help and exit."
 	echo
@@ -117,15 +119,12 @@ function DisplayPastMessage ()
 	local messageday
 		
 	if [ $# -eq 1 ]; then
-		
-    	messageday=$(date --date="$1 day ago" +%d)
-    	messagemonth=$(date --date="$1 day ago" +%m)
-    	messageyear=$(date --date="$1 day ago" +%Y)
+    		messageday=$(date --date="$1 day ago" +%d)
+    		messagemonth=$(date --date="$1 day ago" +%m)
+    		messageyear=$(date --date="$1 day ago" +%Y)
 
-		DisplayMessage $messageyear $messagemonth $messageday
-		
+		DisplayMessage $messageyear $messagemonth $messageday	
 		echo "(${messageyear}/${messagemonth}/${messageday})"
-
 	else
 		echo "ERROR : DisplayPastMessage was passed the wrong number of arguments"
 	fi
@@ -141,13 +140,13 @@ function CreateFile ()
 
 	# Add number of days requested or the default of one
 	if [ $# -eq 1 ]; then
-    	nextday=$(date --date="$1 day" +%d)
-    	nextmonth=$(date --date="$1 day" +%m)
-    	nextyear=$(date --date="$1 day" +%Y)
+    		nextday=$(date --date="$1 day" +%d)
+    		nextmonth=$(date --date="$1 day" +%m)
+    		nextyear=$(date --date="$1 day" +%Y)
 	else
-    	nextday=$(date --date="1 day" +%d)
-    	nextmonth=$(date --date="1 day" +%m)
-    	nextyear=$(date --date="1 day" +%Y)
+    		nextday=$(date --date="1 day" +%d)
+    		nextmonth=$(date --date="1 day" +%m)
+    		nextyear=$(date --date="1 day" +%Y)
 	fi
 
 	filename="${pathtofiles}Morning_${nextyear}_${nextmonth}_${nextday}.txt"
@@ -160,7 +159,7 @@ function CreateFile ()
 		read text
 	done
 
-		# If array is empty do not create file
+	# If array is empty do not create file
 	if [ "${#textarray[@]}" -ne 0 ]; then
 	
 		# Write text to array
@@ -168,7 +167,6 @@ function CreateFile ()
 		do
 			echo $i >> "$filename"
 		done
-
 	fi
 }
 
@@ -180,32 +178,34 @@ function CleanMessages ()
 	local deleteyear
 	local skipdelete=false
 	
+	# Possible error checks
 	if [ -d "$pathtofiles" ]; then
+
 		listMornings=($(ls -1 ${pathtofiles} | grep 'Morning_[0-9][0-9][0-9][0-9]_[0-9][0-9]_[0-9][0-9].txt'))
+		
+		# Check if historytime was set in config
+		if [ -z ${historytime+x} ]; then
+    			deleteday=$day
+    			deletemonth=$month
+    			deleteyear=$year
+		else
+			# Check if historytime is a number
+			if [ "$historytime" -eq "$historytime" ] 2>/dev/null; then
+    				deleteday=$(date --date="$historytime day ago" +%d)
+    				deletemonth=$(date --date="$historytime day ago" +%m)
+    				deleteyear=$(date --date="$historytime day ago" +%Y)
+			else
+				skipdelete=true
+				echo "CONFIG ERROR : historytime is not a valid integer."
+				echo "No files will be deleted until proper value is set."
+			fi
+		fi
 	else
+		skipdelete=true
 		echo "ERROR : Could not delete older messages because $pathtofiles does not exist."
 	fi
-
-	if [ -z ${historytime+x} ]; then
-		# Not set
-    		deleteday=$day
-    		deletemonth=$month
-    		deleteyear=$year
-	else
-		# Set
-		if [ "$historytime" -eq "$historytime" ] 2>/dev/null
-		then
-    			deleteday=$(date --date="$historytime day ago" +%d)
-    			deletemonth=$(date --date="$historytime day ago" +%m)
-    			deleteyear=$(date --date="$historytime day ago" +%Y)
-		else
-			skipdelete=true
-			echo "CONFIG ERROR : historytime is not a valid integer."
-			echo "No files will be deleted until proper value is set."
-		fi
-	fi
-
-
+	
+	# Delete files that are too old
 	if [ "$skipdelete" = false ]; then
 		for file in "${listMornings[@]}"
 		do
@@ -294,6 +294,7 @@ function CreateConfig ()
 			echo 'pathtofiles="filepathnotset"' >> "$pathtoconfig"
 			echo 'remindersfile="filepathnotset"' >> "$pathtoconfig"
 			echo 'commandsfile="filepathnotset"' >> "$pathtoconfig"
+			echo 'historytime=10' >> "$pathtoconfig"
 			return 0
 		else
 			echo "ERROR : could not write default config in $pathtoconfig"
@@ -385,6 +386,21 @@ InstalledOrPortable ()
 	fi
 }
 
+function OpenEditor ()
+{
+	if command -v vim >/dev/null 2>&1; then
+		"${EDITOR:-vim}" $1
+	else
+		if command -v nano >/dev/null 2>&1; then
+			"${EDITOR:-nano}" $1
+		else
+			if command -v vi >/dev/null 2>&1; then
+				"${EDITOR:-vi}" $1
+			fi
+		fi
+	fi	
+}
+
 function SetDate ()
 {	
 	day=$(date +%d)
@@ -448,15 +464,25 @@ else
 
 	# Looking for past messages in history
 	if [ "$1" = "-p" ]; then
-		
+
 		# Test to see if number is a positive integer
-        if [[ $2 =~ ^[+]?[0-9]+$ ]]; then
-            DisplayPastMessage $2
-        else
-            echo "Invalid parameter for -p option"
+        	if [[ $2 =~ ^[+]?[0-9]+$ ]]; then
+            		DisplayPastMessage $2
+        	else
+            		echo "Invalid parameter for -p option"
 			echo "Use positive integers as number of days"
-            PrintHelp
-        fi
+            		PrintHelp
+        	fi
+	fi
+
+	# Edit commands file
+	if [ "$1" = "-c" ]; then
+		OpenEditor $commandsfile
+	fi
+
+	# Edit reminders file
+	if [ "$1" = "-r" ]; then
+		OpenEditor $remindersfile
 	fi
 
 	# Print help section if asked
